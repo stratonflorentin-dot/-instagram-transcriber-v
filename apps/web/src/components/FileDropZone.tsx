@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-
-import { postForm } from "../api/client";
+import { createJobFromFile } from "../api/client";
 import { useJobContext } from "../context/JobContext";
-import type { JobResponse } from "../api/types";
 
 export function FileDropZone() {
   const { dispatch } = useJobContext();
@@ -14,10 +12,8 @@ export function FileDropZone() {
       const file = accepted[0];
       if (!file) return;
       setError(null);
-      const form = new FormData();
-      form.append("file", file);
       try {
-        const job = await postForm<JobResponse>("/api/jobs/upload", form);
+        const job = await createJobFromFile(file);
         dispatch({ type: "START_JOB", jobId: job.id });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Upload failed");
@@ -44,6 +40,7 @@ export function FileDropZone() {
       >
         <input {...getInputProps()} />
         <p>Drag &amp; drop an audio or video file here, or click to browse</p>
+        <p className="mt-1 text-xs opacity-60">Supported: MP3, MP4, M4A, WAV, and more</p>
       </div>
       {error && <p className="text-sm text-red-500">{error}</p>}
     </div>

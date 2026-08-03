@@ -1,9 +1,7 @@
 import { useState } from "react";
-
-import { postJson } from "../api/client";
+import { createJobFromUrl } from "../api/client";
 import { useJobContext } from "../context/JobContext";
 import { isInstagramUrl } from "../lib/validateInstagramUrl";
-import type { JobResponse } from "../api/types";
 
 export function UrlInputForm() {
   const { dispatch } = useJobContext();
@@ -30,7 +28,7 @@ export function UrlInputForm() {
     setValidationError(null);
     setSubmitting(true);
     try {
-      const job = await postJson<JobResponse>("/api/jobs", { url });
+      const job = await createJobFromUrl(url);
       dispatch({ type: "START_JOB", jobId: job.id });
     } catch (err) {
       setValidationError(err instanceof Error ? err.message : "Could not start job");
@@ -63,7 +61,7 @@ export function UrlInputForm() {
         disabled={submitting || !url}
         className="rounded-xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-400 px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {submitting ? "Starting..." : "Transcribe"}
+        {submitting ? "Starting…" : "Transcribe"}
       </button>
     </form>
   );

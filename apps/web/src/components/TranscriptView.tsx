@@ -1,8 +1,7 @@
 import { useState, type ReactNode } from "react";
-
 import type { TranscriptResult } from "../api/types";
 import { CopyButton } from "./CopyButton";
-import { ExportMenu } from "./ExportMenu";
+import { downloadExport } from "../api/client";
 
 function formatTimestamp(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -10,7 +9,14 @@ function formatTimestamp(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function TranscriptView({ jobId, result }: { jobId: string; result: TranscriptResult }) {
+type ExportFormat = "txt" | "srt" | "json";
+const FORMATS: { fmt: ExportFormat; label: string }[] = [
+  { fmt: "txt", label: "Download TXT" },
+  { fmt: "srt", label: "Download SRT" },
+  { fmt: "json", label: "Download JSON" },
+];
+
+export function TranscriptView({ result }: { jobId: string; result: TranscriptResult }) {
   const [showTimestamps, setShowTimestamps] = useState(true);
 
   return (
@@ -44,7 +50,17 @@ export function TranscriptView({ jobId, result }: { jobId: string; result: Trans
 
       <div className="flex flex-wrap items-center gap-2 border-t border-stone-100 pt-4 dark:border-stone-800">
         <CopyButton text={result.text} />
-        <ExportMenu jobId={jobId} />
+        {/* Client-side exports — no backend download link needed */}
+        {FORMATS.map(({ fmt, label }) => (
+          <button
+            key={fmt}
+            type="button"
+            onClick={() => downloadExport(result, fmt)}
+            className="rounded-xl border border-stone-200 px-4 py-2 text-sm font-medium text-stone-600 shadow-soft transition hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+          >
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   );

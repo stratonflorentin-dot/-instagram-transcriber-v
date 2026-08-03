@@ -1,0 +1,8 @@
+[functions.transcribe]
+verify_jwt = false
+
+[functions.transcribe-file]
+verify_jwt = false
+
+[functions.history]
+verify_jwt = false
