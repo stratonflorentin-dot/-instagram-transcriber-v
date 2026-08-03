@@ -5,6 +5,19 @@ const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const COBALT_INSTANCES = [
+  "https://rue-cobalt.xenon.zone",
+  "https://melon.clxxped.lol",
+  "https://grapefruit.clxxped.lol",
+  "https://lime.clxxped.lol",
+  "https://subito-c.meowing.de",
+  "https://nuko-c.meowing.de",
+  "https://cobaltapi.cjs.nz",
+  "https://api.qwkuns.me",
+  "https://cobalt.omega.wolfy.love",
+  "https://api.cobalt.liubquanti.click"
+];
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -27,45 +40,54 @@ async function updateJob(
 }
 
 async function downloadAudioFromInstagram(url: string): Promise<{ audioBlob: Blob; title: string }> {
-  // Use yt-dlp-web API (cobalt.tools or similar) to get a direct download link
-  // Cobalt is a free, open-source media downloader API
-  const cobaltRes = await fetch("https://api.cobalt.tools/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      url,
-      downloadMode: "audio",
-      audioFormat: "mp3",
-      audioBitrate: "128",
-    }),
-  });
+  let lastError: Error | null = null;
 
-  if (!cobaltRes.ok) {
-    const text = await cobaltRes.text().catch(() => "");
-    throw new Error(`Failed to get download URL from cobalt: ${cobaltRes.status} ${text}`);
+  // Try each Cobalt instance until one succeeds
+  for (const instance of COBALT_INSTANCES) {
+    try {
+      console.log(`[download] Attempting download via Cobalt instance: ${instance}`);
+      const cobaltRes = await fetch(instance, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          url,
+          downloadMode: "audio",
+          audioFormat: "mp3",
+          audioBitrate: "128",
+        }),
+      });
+
+      if (!cobaltRes.ok) {
+        const text = await cobaltRes.text().catch(() => "");
+        throw new Error(`Instance returned ${cobaltRes.status}: ${text}`);
+      }
+
+      const cobaltData = await cobaltRes.json();
+      const downloadUrl = cobaltData.url ?? cobaltData.tunnel;
+
+      if (!downloadUrl) {
+        throw new Error(`No download URL in response: ${JSON.stringify(cobaltData)}`);
+      }
+
+      console.log(`[download] Successfully got download link: ${downloadUrl}`);
+      const audioRes = await fetch(downloadUrl);
+      if (!audioRes.ok) {
+        throw new Error(`Failed to fetch direct audio file: ${audioRes.status}`);
+      }
+
+      const audioBlob = await audioRes.blob();
+      const title = cobaltData.filename ?? url;
+      return { audioBlob, title };
+    } catch (err) {
+      console.warn(`[download] Instance ${instance} failed:`, err);
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
   }
 
-  const cobaltData = await cobaltRes.json();
-
-  // cobalt returns { status: "tunnel" | "redirect" | "stream" | "picker", url?, tunnel? }
-  const downloadUrl = cobaltData.url ?? cobaltData.tunnel;
-  if (!downloadUrl) {
-    throw new Error(
-      `Could not extract download URL from cobalt response: ${JSON.stringify(cobaltData)}`
-    );
-  }
-
-  const audioRes = await fetch(downloadUrl);
-  if (!audioRes.ok) {
-    throw new Error(`Failed to download audio: ${audioRes.status}`);
-  }
-
-  const audioBlob = await audioRes.blob();
-  const title = cobaltData.filename ?? url;
-  return { audioBlob, title };
+  throw new Error(`All community download instances failed. Last error: ${lastError?.message}`);
 }
 
 async function transcribeWithGroq(audioBlob: Blob, filename: string): Promise<{
