@@ -9,7 +9,7 @@
       "destination": "/index.html"
     }
   ],
-  "experimentalServices": {
+  "services": {
     "web": {
       "entrypoint": "apps/web",
       "routePrefix": "/",
