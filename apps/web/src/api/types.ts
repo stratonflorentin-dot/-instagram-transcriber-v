@@ -53,6 +53,7 @@ export interface TranscriptResult {
 
 export interface HistoryItem {
   id: string;
+  job_id: string;
   source_type: "url" | "file";
   source: string;
   title: string;
