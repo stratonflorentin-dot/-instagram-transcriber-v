@@ -1,72 +1,71 @@
 import { useEffect, useState } from "react";
 
-import { getJobResult } from "../api/client";
-import type { TranscriptResult } from "../api/types";
+import { deleteHistoryItem } from "../api/client";
+import type { HistoryItem } from "../api/types";
 import { useJobContext } from "../context/JobContext";
 import { useHistory } from "../hooks/useHistory";
-import { TranscriptView } from "./TranscriptView";
+import { TrashIcon } from "./Icons";
 
-export function HistoryList() {
-  const { entries, refresh } = useHistory();
+export function HistoryList({
+  selectedJobId,
+  onSelect,
+}: {
+  selectedJobId: string | null;
+  onSelect: (entry: HistoryItem) => void;
+}) {
+  const { entries, refresh, remove } = useHistory();
   const { state } = useJobContext();
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [result, setResult] = useState<TranscriptResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (state.status === "completed") refresh();
   }, [state.status, refresh]);
 
-  const toggleEntry = async (entryId: string, jobId: string) => {
-    if (openId === entryId) {
-      setOpenId(null);
-      return;
-    }
-
-    setOpenId(entryId);
-    setResult(null);
-    setLoadError(null);
-    setLoading(true);
+  const handleDelete = async (e: React.MouseEvent, entry: HistoryItem) => {
+    e.stopPropagation();
+    setPendingDelete(entry.id);
     try {
-      setResult(await getJobResult(jobId));
-    } catch {
-      setLoadError("Couldn't load this transcript.");
+      await deleteHistoryItem(entry.id);
+      remove(entry.id);
     } finally {
-      setLoading(false);
+      setPendingDelete(null);
     }
   };
 
-  if (entries.length === 0) return null;
+  if (entries.length === 0) {
+    return <p className="px-3 py-2 text-xs text-stone-400 dark:text-stone-600">No transcripts yet.</p>;
+  }
 
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="text-sm font-semibold text-stone-500 dark:text-stone-400">Recent</h2>
-      <ul className="flex flex-col gap-2">
-        {entries.map((entry) => (
-          <li key={entry.id} className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => toggleEntry(entry.id, entry.job_id)}
-              className="flex w-full items-center justify-between rounded-xl border border-stone-200 bg-white px-4 py-3 text-left text-sm shadow-soft transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:hover:bg-stone-800"
+    <ul className="flex flex-col gap-0.5">
+      {entries.map((entry) => (
+        <li key={entry.id}>
+          <button
+            type="button"
+            onClick={() => onSelect(entry)}
+            className={`group flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${
+              selectedJobId === entry.job_id
+                ? "bg-brand-100 text-brand-800 dark:bg-brand-500/15 dark:text-brand-200"
+                : "text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800/70"
+            }`}
+          >
+            <span className="min-w-0 flex-1 truncate">{entry.title}</span>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => handleDelete(e, entry)}
+              className="shrink-0 rounded-md p-1 text-stone-400 opacity-0 transition hover:bg-stone-200 hover:text-stone-600 group-hover:opacity-100 dark:hover:bg-stone-700 dark:hover:text-stone-200"
+              aria-label="Delete transcript"
             >
-              <div className="min-w-0">
-                <p className="truncate font-medium text-stone-700 dark:text-stone-200">{entry.title}</p>
-                <p className="truncate text-xs text-stone-400">{entry.source}</p>
-              </div>
-              <span className="ml-3 shrink-0 text-xs text-stone-400">{entry.word_count} words</span>
-            </button>
-
-            {openId === entry.id && (
-              <>
-                {loading && <p className="px-1 text-xs text-stone-400">Loading transcript…</p>}
-                {loadError && <p className="px-1 text-xs text-red-500">{loadError}</p>}
-                {result && <TranscriptView jobId={entry.job_id} result={result} />}
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
+              {pendingDelete === entry.id ? (
+                <span className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-500" />
+              ) : (
+                <TrashIcon className="h-3.5 w-3.5" />
+              )}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

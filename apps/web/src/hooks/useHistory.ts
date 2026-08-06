@@ -11,9 +11,13 @@ export function useHistory() {
       .catch(() => undefined);
   }, []);
 
+  const remove = useCallback((id: string) => {
+    setEntries((prev) => prev.filter((entry) => entry.id !== id));
+  }, []);
+
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  return { entries, refresh };
+  return { entries, refresh, remove };
 }
