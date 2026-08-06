@@ -5,7 +5,14 @@ echo ===================================================
 echo.
 
 set PROJECT_REF=knwzzllrgsmwwbjpotbc
-set GROQ_API_KEY=wCxW_JcnV-P-aNNXZiDSpFU7an5uD00MmLlcL8l5MMA
+
+if "%GROQ_API_KEY%"=="" (
+    echo GROQ_API_KEY environment variable is not set.
+    echo Get a key from https://console.groq.com/keys, then run:
+    echo   set GROQ_API_KEY=your_key_here
+    echo before running this script again.
+    exit /b 1
+)
 
 echo [1/3] Linking Supabase Project (%PROJECT_REF%)...
 call npx supabase link --project-ref %PROJECT_REF%
